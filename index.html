@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papatya Kalbi - Mete & Niloya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Dancing Script', cursive;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .floating-text {
+            position: absolute;
+            pointer-events: none;
+            font-family: 'Dancing Script', cursive;
+            font-size: 26px;
+            font-weight: 700;
+            color: #87CEEB;
+            text-shadow: 0 0 10px rgba(135, 206, 235, 0.8), 
+                         0 0 20px rgba(135, 206, 235, 0.4);
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            z-index: 10;
+            animation: floatUp 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -30%) scale(0.6) rotate(-4deg);
+            }
+            15% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -160%) scale(1) rotate(4deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        let width, height, centerX, centerY, scale;
+        let flowers = [];
+        let time = 0;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+            
+            const baseDimension = Math.min(width, height);
+            scale = baseDimension / 40; 
+            
+            initFlowers();
+        }
+
+        function getHeartPoint(t) {
+            const x = 16 * Math.pow(Math.sin(t), 3);
+            const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+            return { x, y };
+        }
+
+        class Daisy {
+            constructor(x, y, sizeRatio, angleOffset) {
+                this.baseX = x;
+                this.baseY = y;
+                this.size = sizeRatio * scale;
+                this.petals = 12 + Math.floor(Math.random() * 4);
+                this.angleOffset = angleOffset;
+                this.phase = Math.random() * Math.PI * 2;
+                this.swaySpeed = 0.8 + Math.random() * 0.8;
+                this.yellowHue = 45 + Math.random() * 10;
+            }
+
+            draw(t) {
+                const swayX = Math.sin(t * this.swaySpeed + this.phase) * (scale * 0.15);
+                const swayY = Math.cos(t * this.swaySpeed * 0.7 + this.phase) * (scale * 0.1);
+                const currentX = this.baseX + swayX;
+                const currentY = this.baseY + swayY;
+
+                ctx.save();
+                ctx.translate(currentX, currentY);
+                ctx.rotate(this.angleOffset + Math.sin(t + this.phase) * 0.08);
+
+                // Yapraklar (Papatya)
+                const petalLength = this.size * 1.5;
+                const petalWidth = this.size * 0.45;
+                
+                ctx.fillStyle = '#FFFFFF';
+                for (let i = 0; i < this.petals; i++) {
+                    const angle = (i * 2 * Math.PI) / this.petals;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.bezierCurveTo(
+                        -petalWidth / 2, petalLength * 0.4,
+                        -petalWidth / 2, petalLength * 0.8,
+                        0, petalLength
+                    );
+                    ctx.bezierCurveTo(
+                        petalWidth / 2, petalLength * 0.8,
+                        petalWidth / 2, petalLength * 0.4,
+                        0, 0
+                    );
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // Sarı Göbek (Tohum Kısmı)
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size * 0.48, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${this.yellowHue}, 95%, 50%)`;
+                ctx.fill();
+
+                // Göbek Gölgelendirmesi
+                ctx.beginPath();
+                ctx.arc(-this.size * 0.1, -this.size * 0.1, this.size * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${this.yellowHue}, 100%, 65%)`;
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function initFlowers() {
+            flowers = [];
+            
+            // Dış Çerçeve (Yoğun)
+            const countOuter = 260;
+            for (let i = 0; i < countOuter; i++) {
+                const t = (i / countOuter) * Math.PI * 2;
+                const pt = getHeartPoint(t);
+                const x = centerX + pt.x * scale;
+                const y = centerY + pt.y * scale;
+                const size = 0.55 + Math.random() * 0.25;
+                flowers.push(new Daisy(x, y, size, t));
+            }
+
+            // İç Doldurma (Yoğun ve Katmanlı)
+            const layers = 9;
+            for (let l = 1; l <= layers; l++) {
+                const factor = l / (layers + 1);
+                const countInner = Math.floor(countOuter * factor * 0.85);
+                for (let i = 0; i < countInner; i++) {
+                    const t = (i / countInner) * Math.PI * 2 + Math.random() * 0.1;
+                    const pt = getHeartPoint(t);
+                    const jitterX = (Math.random() - 0.5) * scale * 0.6;
+                    const jitterY = (Math.random() - 0.5) * scale * 0.6;
+                    const x = centerX + pt.x * scale * factor + jitterX;
+                    const y = centerY + pt.y * scale * factor + jitterY;
+                    const size = (0.45 + Math.random() * 0.3) * (0.75 + factor * 0.35);
+                    flowers.push(new Daisy(x, y, size, Math.random() * Math.PI * 2));
+                }
+            }
+        }
+
+        function animate() {
+            time += 0.02;
+
+            // Arka planı temizle (Siyah)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Yumuşak Kalp Atışı Efekti
+            const pulse = 1 + Math.sin(time * 1.5) * 0.015;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(pulse, pulse);
+            ctx.translate(-centerX, -centerY);
+
+            for (let i = 0; i < flowers.length; i++) {
+                flowers[i].draw(time);
+            }
+
+            ctx.restore();
+
+            requestAnimationFrame(animate);
+        }
+
+        function createText(x, y) {
+            const textEl = document.createElement('div');
+            textEl.className = 'floating-text';
+            textEl.innerHTML = 'mete ♡ niloya';
+            textEl.style.left = x + 'px';
+            textEl.style.top = y + 'px';
+
+            document.body.appendChild(textEl);
+
+            setTimeout(() => {
+                textEl.remove();
+            }, 2500);
+        }
+
+        window.addEventListener('resize', resize);
+
+        window.addEventListener('pointerdown', (e) => {
+            createText(e.clientX, e.clientY);
+        });
+
+        // Başlat
+        resize();
+        animate();
+    </script>
+</body>
+</html>
